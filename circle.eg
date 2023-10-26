@@ -1,0 +1,102 @@
+call circle
+call draw
+hlt
+
+circle:
+	push 0
+	pop rax
+	jmp line_loop1
+
+	line_loop1:
+		push 0
+		pop rbx
+		jmp char_loop1
+
+		char_loop1:
+			push rax
+			push 20
+			mul
+			push rbx
+			add
+			pop rcx
+			push 46
+			pop [rcx]
+			push rax
+			push 10
+			sub
+			push rax
+			push 10
+			sub
+			mul
+			push 4
+			mul
+			push rbx
+			push 10
+			sub
+			push rbx
+			push 10
+			sub
+			mul
+			add
+			push 80
+			ja else
+
+			push 35
+			pop [rcx]
+
+			else:
+				push rbx
+				push 1
+				add
+				pop rbx
+				push rbx
+				push 20
+				jb char_loop1
+
+		push rax
+		push 1
+		add
+		pop rax
+		push rax
+		push 20
+		jb line_loop1
+	ret
+
+draw:
+	push 0
+	pop rax
+	jmp line_loop
+
+	line_loop:
+		push 0
+		pop rbx
+		jmp char_loop
+
+		char_loop:
+			push rax
+			push 20
+			mul
+			push rbx
+			add
+			pop rcx
+			push [rcx]
+			outc
+			push rbx
+			push 1
+			add
+			pop rbx
+			push rbx
+			push 20
+			jb char_loop
+
+		push 10
+		outc
+		push rax
+		push 1
+		add
+		pop rax
+		push rax
+		push 20
+		jb line_loop
+
+	ret

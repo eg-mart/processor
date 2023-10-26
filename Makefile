@@ -12,11 +12,11 @@ CFLAGS = -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++\
 -fstack-protector -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer\
 -Wlarger-than=8192 -Wstack-usage=8192 -pie -fPIE -Werror=vla\
 -Itests -Isrc\
--fsanitize=address,alignment,bool,bounds,enum,float-cast-overflow,float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,undefined,unreachable,vla-bound,vptr
+-fsanitize=address,alignment,bool,bounds,enum,float-cast-overflow,float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,undefined,unreachable,vla-bound,vptr\
 
 CC = g++
 
-VPATH = src
+VPATH = common assembler execution
 .PHONY : clean
 
 OBJS_NAMES = stack.o logger.o stack_debug.o file_reading.o execution.o
@@ -24,22 +24,22 @@ OBJDIR = build
 OBJS = $(addprefix $(OBJDIR)/, $(OBJS_NAMES))
 
 all : processor
-all : assembler
+all : assemble
 
 processor : $(OBJS) $(OBJDIR)/processor.o
-	$(CC) $(CFLAGS) -o processor $(OBJS) $(OBJDIR)/processor.o
+	@$(CC) $(CFLAGS) -o processor $(OBJS) $(OBJDIR)/processor.o
 
-assembler : $(OBJS) $(OBJDIR)/assembler.o
-	$(CC) $(CFLAGS) -o assembler $(OBJS) $(OBJDIR)/assembler.o
+assemble : $(OBJS) $(OBJDIR)/assembler.o
+	@$(CC) $(CFLAGS) -o assemble $(OBJS) $(OBJDIR)/assembler.o
 
 $(OBJDIR)/processor.o : processor.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR)/assembler.o : assembler.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJS): $(OBJDIR)/%.o: %.cpp %.h
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
-	rm processor assembler $(OBJS) $(OBJDIR)/assembler.o $(OBJDIR)/processor.o
+	rm processor assemble $(OBJS) $(OBJDIR)/assembler.o $(OBJDIR)/processor.o

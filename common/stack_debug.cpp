@@ -4,7 +4,16 @@
 #include "logger.h"
 #include "stack.h"
 #include "stack_debug.h"
+
+#ifdef HASH_PROTECTION
 #include "colors.h"
+#endif
+
+#ifndef HASH_PROTECTION
+#ifdef CANARY_PROTECTION
+#include "colors.h"
+#endif
+#endif
 
 #ifdef HASH_PROTECTION
 unsigned long gnu_hash(void *data_ptr, size_t size);

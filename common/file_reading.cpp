@@ -5,9 +5,15 @@
 
 #include "file_reading.h"
 
+const char *TXT_ERROR_MSG[] = {
+	"No errors were encountered.",
+	"Reading text failed: out of memory.",
+	"Error accessing input file.",
+	"Error reading from the input file."
+};
+
 size_t count_sep_in_str(const char *str, char c);
 void split_text(Text *text, char sep);
-enum TextError get_file_size(FILE *file, size_t *size);
 
 enum TextError read_text(struct Text *text, const char *filename)
 {
@@ -61,7 +67,7 @@ size_t count_sep_in_str(const char *str, char c)
 	size_t num_chars = 0;
 	while (*str != '\0')
 		if (*str++ == c)
-			if (*str != '\n')
+			if (*str != c)
 				num_chars++; 
 	return num_chars;
 }
@@ -79,7 +85,11 @@ void split_text(Text *text, char sep)
 	while (*iter_buf != '\0') {
 		cur_line_len++;
 		if (*iter_buf == sep) {
-			*iter_buf = '\0';
+			while (*iter_buf == sep) {
+				*iter_buf = '\0';
+				iter_buf++;
+			}
+			iter_buf--;
 			iter_lines->len = cur_line_len;
 			*++iter_lines = { 0, iter_buf + 1 };
 			cur_line_len = 0;
@@ -88,7 +98,6 @@ void split_text(Text *text, char sep)
 	}
 	iter_lines->len = cur_line_len;
 }
-
 
 void destroy_text(struct Text *text)
 {
@@ -102,4 +111,9 @@ void destroy_text(struct Text *text)
 
 	text->num_lines = 0;
 	text->buffer_size = 0;
+}
+
+const char *txt_error_to_str(enum TextError err)
+{
+	return TXT_ERROR_MSG[-((int) err)];
 }

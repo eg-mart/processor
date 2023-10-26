@@ -68,10 +68,10 @@ enum Log_error do_log(enum Log_level level, const char *prefix, const char *colo
 			continue;
 		
 		if (LOGGER.handlers[i].use_colors)
-			fprintf(LOGGER.handlers[i].output, "%s%s%s %s",
+			fprintf(LOGGER.handlers[i].output, "%s%s%s%s",
 					color, prefix, RESET_COLOR, buff);
 		else
-			fprintf(LOGGER.handlers[i].output, "%s %s", prefix, buff);
+			fprintf(LOGGER.handlers[i].output, "%s%s", prefix, buff);
 
 		error = error || ferror(LOGGER.handlers[i].output);
 	}
@@ -106,19 +106,19 @@ enum Log_error log_message(enum Log_level level, const char *message, ...)
 
 	switch (level) {
 		case ERROR:
-			status = do_log(level, "[ERROR]", RED, message, args);
+			status = do_log(level, "[ERROR] ", RED, message, args);
 			break;
 		case WARN:
-			status = do_log(level, "[WARNING]", YELLOW, message, args);
+			status = do_log(level, "[WARNING] ", YELLOW, message, args);
 			break;
 		case INFO:
-			status = do_log(level, "[INFO]", BLUE, message, args);
+			status = do_log(level, "[INFO] ", BLUE, message, args);
 			break;
 		case DEBUG:
-			status = do_log(level, "[DEBUG]", GREEN, message, args);
+			status = do_log(level, "[DEBUG] ", GREEN, message, args);
 			break;
 		default:
-			status = do_log(level, "[UNKNOWN]", RED, message, args);
+			status = do_log(level, "[UNKNOWN] ", RED, message, args);
 	}
 
 	va_end(args);
@@ -140,7 +140,7 @@ enum Log_error log_test(bool is_succesful, int num_test, const char *message, ..
 		sprintf(prefix, "test %d OK", num_test);
 		status = do_log(ERROR, prefix, GREEN, message, args);
 	} else {
-		sprintf(prefix, "test %d FAILED:", num_test);
+		sprintf(prefix, "test %d FAILED: ", num_test);
 		status = do_log(ERROR, prefix, RED, message, args);
 	}
 

@@ -21,6 +21,8 @@ enum TextError {
 };
 
 enum TextError read_text(struct Text *text, const char *filename);
+enum TextError get_file_size(FILE *file, size_t *size);
 void destroy_text(struct Text *text);
+const char *txt_error_to_str(enum TextError err);
 
 #endif

@@ -1,0 +1,39 @@
+in
+call fib
+push rax
+out
+hlt
+
+fib:
+	pop rcx
+	pop rbx
+
+	push 2
+	push rbx
+	jb rec
+
+	push 1
+	pop rax
+	push rcx
+	ret
+
+	rec:
+	push rcx
+	push rbx
+
+	push rbx
+	push 1
+	sub
+	call fib
+	pop rbx
+	push rax
+
+	push rbx
+	push 2
+	sub
+	call fib
+	push rax
+
+	add
+	pop rax
+	ret
