@@ -279,9 +279,12 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 			asmb->program[asmb->pc + 1] = (int) (num * 100);
 	}
 
-#define DEF_REG(name)								\
-	if(strcasecmp(reg, #name) == 0)					\
-		asmb->program[asmb->pc + 1] = REG_ ## name;
+#define DEF_REG(name)											\
+	if (strncasecmp(arg_start, #name, strlen(#name)) == 0) {	\
+		asmb->program[asmb->pc + 1] = REG_ ## name;				\
+		reg_len = strlen(#name);								\
+		read_success = 1;										\
+	}
 
 	if ((arg_types & RAM) && !read_success) {
 		if (arg_start[0] == '[') {
@@ -298,15 +301,14 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 					asmb->program[asmb->pc + 1] = address;
 				}
 			} else {
-				char reg[REG_NAME_SIZE] = "";
-				read_success |= sscanf(arg_start, "%s]", reg);
-				reg[strlen(reg) - 1] = '\0'; // temp fix for rax] issue
+				size_t reg_len = 0;
+				#include "../common/registers.h"
+
 				if (read_success) {
-					arg_start = skip_space(arg_start + strlen(reg));
+					arg_start = skip_space(arg_start + reg_len);
 					if (arg_start[0] != ']')
 						return create_error(ASM_WRONG_ARGS_ERR, "");
 					asmb->program[asmb->pc] |= RAM | REG;
-					#include "../common/registers.h"
 				}
 			}
 		}
@@ -314,11 +316,10 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 
 	// All if's are checked
 	if ((arg_types & REG) && !read_success) {
-		char reg[REG_NAME_SIZE] = {};
-		read_success |= sscanf(arg_start, "%s", reg);
+		size_t reg_len = 0;
+		#include "../common/registers.h"
 		if (read_success) {
-			asmb->program[asmb->pc] |= REG; /* REG is always assigned */
-			#include "../common/registers.h"
+			asmb->program[asmb->pc] |= REG;
 		}
 	}
 
