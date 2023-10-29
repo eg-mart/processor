@@ -1,0 +1,195 @@
+;input of coefficients into rax, rbx, rcx
+in
+pop rax
+in
+pop rbx
+in
+pop rcx
+
+push rax
+push 0
+jne quadratic
+
+push rbx
+push 0
+jne linear
+
+push rcx
+push 0
+jne no_roots
+
+jmp inf_roots
+
+quadratic:
+	push rax
+	push rbx
+	push rcx
+	call solve_quadratic
+	hlt
+
+linear:
+	push rcx
+	push rbx
+	call solve_linear
+	push rax
+	out
+	hlt
+
+no_roots:
+	call print_no_roots
+	hlt
+
+inf_roots:
+	call print_inf_roots
+	hlt
+
+;calculates discriminant. Needs coefficients in stack, returns to rax.
+;order of coefficients is a, c, b.
+;uses rax, rdx
+discr:
+	pop rdx 	;save ret address
+	pop rax		;save b
+	push rax
+	push rax
+	mul
+	pop rax 	;save b^2
+	mul
+	push 4
+	mul			;calculate 4ac
+	push rax
+	sub			;calculate 4ac - b^2
+	pop rax
+	push 0
+	push rax
+	sub			;calculate discriminant as 0 - (4ac - b^2)
+	pop rax
+	push rdx
+	ret
+
+solve_quadratic:
+	pop rdx
+	pop rcx
+	pop rbx
+	pop rax
+
+	push rdx
+	push rax
+
+	push rax
+	push rcx
+	push rbx
+	call discr
+	pop rdx
+	push rax
+	push rdx
+	pop rax
+	pop rdx
+
+	push rdx
+	push 0
+	jb quad_no_roots
+
+	push rdx
+	push 0
+	je quad_one_root
+
+	push rdx
+	push 0
+	ja quad_two_roots
+
+	quad_one_root:
+		push 0
+		push rbx
+		sub
+		push 2
+		push rax
+		mul
+		div
+		out
+		ret
+
+	quad_no_roots:
+		call print_no_roots
+		ret
+
+	quad_two_roots:
+		push 0
+		push rbx
+		sub
+		push rdx
+		sqrt
+		sub
+		push rax
+		push 2
+		mul
+		div
+		out
+
+		push 0
+		push rbx
+		sub
+		push rdx
+		sqrt
+		add
+		push rax
+		push 2
+		mul
+		div
+		out
+		ret
+	ret
+
+solve_linear:
+	pop rdx
+	div
+	pop rax
+	push 0
+	push rax
+	sub
+	pop rax
+	push rdx
+	ret
+
+print_no_roots:
+	push 10
+	push 115
+	push 116
+	push 111
+	push 111
+	push 114
+	push 32
+	push 111
+	push 78
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	ret
+
+print_inf_roots:
+	push 10
+	push 115
+	push 116
+	push 111
+	push 111
+	push 114
+	push 32
+	push 102
+	push 110
+	push 73
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	outc
+	ret

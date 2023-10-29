@@ -6,13 +6,13 @@
 #define PC 			i
 #define RAM(addr)	spu->ram[(addr)]
 
-DEF_CMD(PUSH, 1, REG | NUM | RAM, 
+DEF_CMD(PUSH, 1, SIG_REG | SIG_NUM | SIG_RAM, 
 	{
-		if ((OPCODE & REG) && (OPCODE & RAM)) {
+		if ((OPCODE & SIG_REG) && (OPCODE & SIG_RAM)) {
 			PUSH(RAM(REG(ARG) / 100));
-		} else if (OPCODE & REG) {
+		} else if (OPCODE & SIG_REG) {
 			PUSH(REG(ARG));
-		} else if (OPCODE & RAM) {
+		} else if (OPCODE & SIG_RAM) {
 			PUSH(RAM(ARG));
 		} else {
 			PUSH(ARG);
@@ -20,19 +20,19 @@ DEF_CMD(PUSH, 1, REG | NUM | RAM,
 	}
 )
 
-DEF_CMD(POP,  1, REG | RAM,
+DEF_CMD(POP,  1, SIG_REG | SIG_RAM,
 	{
-		if ((OPCODE & REG) && (OPCODE & RAM)) {
+		if ((OPCODE & SIG_REG) && (OPCODE & SIG_RAM)) {
 			POP(&(RAM(REG(ARG) / 100)));
-		} else if (OPCODE & REG) {
+		} else if (OPCODE & SIG_REG) {
 			POP(&(REG(ARG)));
-		} else if (OPCODE & RAM) {
+		} else if (OPCODE & SIG_RAM) {
 			POP(&(RAM(ARG)));
 		}
 	}
 )
 
-DEF_CMD(ADD,  0, NONE,
+DEF_CMD(ADD,  0, SIG_NONE,
 	{	
 		int f = 0;
 		int s = 0;
@@ -42,7 +42,7 @@ DEF_CMD(ADD,  0, NONE,
 	}
 )
 
-DEF_CMD(SUB,  0, NONE,
+DEF_CMD(SUB,  0, SIG_NONE,
 	{
 		int f = 0;
 		int s = 0;
@@ -52,7 +52,7 @@ DEF_CMD(SUB,  0, NONE,
 	}
 )
 
-DEF_CMD(MUL,  0, NONE,
+DEF_CMD(MUL,  0, SIG_NONE,
 	{
 		int f = 0;
 		int s = 0;
@@ -62,7 +62,7 @@ DEF_CMD(MUL,  0, NONE,
 	}
 )
 
-DEF_CMD(DIV,  0, NONE,
+DEF_CMD(DIV,  0, SIG_NONE,
 	{
 		int f = 0;
 		int s = 0;
@@ -74,7 +74,7 @@ DEF_CMD(DIV,  0, NONE,
 	}
 )
 
-DEF_CMD(SQRT, 0, NONE,
+DEF_CMD(SQRT, 0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -82,7 +82,7 @@ DEF_CMD(SQRT, 0, NONE,
 	}
 )
 
-DEF_CMD(SIN,  0, NONE,
+DEF_CMD(SIN,  0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -90,7 +90,7 @@ DEF_CMD(SIN,  0, NONE,
 	}
 )
 
-DEF_CMD(COS,  0, NONE,
+DEF_CMD(COS,  0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -98,7 +98,7 @@ DEF_CMD(COS,  0, NONE,
 	}
 )
 
-DEF_CMD(IN,	  0, NONE,
+DEF_CMD(IN,	  0, SIG_NONE,
 	{
 		double f = 0;
 		printf("Enter a number: ");
@@ -107,7 +107,7 @@ DEF_CMD(IN,	  0, NONE,
 	}
 )
 
-DEF_CMD(OUT,  0, NONE,
+DEF_CMD(OUT,  0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -115,19 +115,19 @@ DEF_CMD(OUT,  0, NONE,
 	}
 )
 
-DEF_CMD(HLT, 0, NONE,
+DEF_CMD(HLT, 0, SIG_NONE,
 	{
 		return PROG_NO_ERR;
 	}
 )
 
-DEF_CMD(JMP, 1, LABEL | IMMED,
+DEF_CMD(JMP, 1, SIG_LABEL | SIG_IMMED,
 	{
 		PC = (size_t) ARG - 2;
 	}
 )
 
-DEF_CMD(JB, 1, LABEL | IMMED,
+DEF_CMD(JB, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -138,7 +138,7 @@ DEF_CMD(JB, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(JA, 1, LABEL | IMMED,
+DEF_CMD(JA, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -149,7 +149,7 @@ DEF_CMD(JA, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(JBE, 1, LABEL | IMMED,
+DEF_CMD(JBE, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -160,7 +160,7 @@ DEF_CMD(JBE, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(JAE, 1, LABEL | IMMED,
+DEF_CMD(JAE, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -171,7 +171,7 @@ DEF_CMD(JAE, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(JE, 1, LABEL | IMMED,
+DEF_CMD(JE, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -182,7 +182,7 @@ DEF_CMD(JE, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(JNE, 1, LABEL | IMMED,
+DEF_CMD(JNE, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = 0;
 		int s = 0;
@@ -193,7 +193,7 @@ DEF_CMD(JNE, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(CALL, 1, LABEL | IMMED,
+DEF_CMD(CALL, 1, SIG_LABEL | SIG_IMMED,
 	{
 		int f = (int) PC + 2;
 		PUSH(f);
@@ -201,7 +201,7 @@ DEF_CMD(CALL, 1, LABEL | IMMED,
 	}
 )
 
-DEF_CMD(RET, 0, NONE,
+DEF_CMD(RET, 0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -209,7 +209,7 @@ DEF_CMD(RET, 0, NONE,
 	}
 )
 
-DEF_CMD(OUTC, 0, NONE,
+DEF_CMD(OUTC, 0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);
@@ -217,7 +217,7 @@ DEF_CMD(OUTC, 0, NONE,
 	}
 )
 
-DEF_CMD(OUTD, 0, NONE,
+DEF_CMD(OUTD, 0, SIG_NONE,
 	{
 		int f = 0;
 		POP(&f);

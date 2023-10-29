@@ -19,7 +19,7 @@ CC = g++
 VPATH = common assembler execution
 .PHONY : clean
 
-OBJS_NAMES = stack.o logger.o stack_debug.o file_reading.o execution.o
+OBJS_NAMES = stack.o logger.o cmd_args.o stack_debug.o file_reading.o execution.o
 OBJDIR = build
 OBJS = $(addprefix $(OBJDIR)/, $(OBJS_NAMES))
 

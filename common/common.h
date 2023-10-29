@@ -2,12 +2,12 @@
 #define _PROC_COMMONS_
 
 enum ArgTypes {
-	NONE	= 1 << 0,
-	IMMED	= 1 << 1,
-	LABEL	= 1 << 2,
-	NUM 	= 1 << 3,
-	REG 	= 1 << 5,
-	RAM		= 1 << 6,
+	SIG_NONE	= 1 << 0,
+	SIG_IMMED	= 1 << 1,
+	SIG_LABEL	= 1 << 2,
+	SIG_NUM 	= 1 << 3,
+	SIG_REG 	= 1 << 5,
+	SIG_RAM		= 1 << 6,
 };
 
 #define DEF_REG(name) \

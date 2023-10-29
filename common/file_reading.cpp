@@ -67,8 +67,7 @@ size_t count_sep_in_str(const char *str, char c)
 	size_t num_chars = 0;
 	while (*str != '\0')
 		if (*str++ == c)
-			if (*str != c)
-				num_chars++; 
+			num_chars++; 
 	return num_chars;
 }
 
@@ -85,11 +84,7 @@ void split_text(Text *text, char sep)
 	while (*iter_buf != '\0') {
 		cur_line_len++;
 		if (*iter_buf == sep) {
-			while (*iter_buf == sep) {
-				*iter_buf = '\0';
-				iter_buf++;
-			}
-			iter_buf--;
+			*iter_buf = '\0';
 			iter_lines->len = cur_line_len;
 			*++iter_lines = { 0, iter_buf + 1 };
 			cur_line_len = 0;

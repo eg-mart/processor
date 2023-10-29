@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "../common/cmd_args.h"
 #include "../common/file_reading.h"
 #include "../common/common.h"
 #include "../common/logger.h"
@@ -33,12 +34,13 @@ enum AsmErrorCode {
 struct AsmError {
 	enum AsmErrorCode errcode;
 	int padding;
-	unsigned char context[ERR_CONTEXT_SIZE];
+	char context[ERR_CONTEXT_SIZE];
 };
 
 struct Label {
 	char name[LABEL_SIZE];
 	size_t location;
+	size_t line;
 };
 
 struct Fixup {
@@ -49,13 +51,14 @@ struct Fixup {
 
 struct Assembler {
 	int *program;
-	size_t prog_size;
+	size_t cmd_num;
 	struct Text program_txt;
 	struct Label labels[MAX_LABELS];
 	struct Fixup fixups[MAX_LABELS];
 	size_t labels_num;
 	size_t fixups_num;
 	size_t pc;
+	size_t line;
 };
 
 const char *ASM_ERROR_MSG[] = {
@@ -66,7 +69,7 @@ const char *ASM_ERROR_MSG[] = {
 	"Writing results to a binary file has failed\n",
 	"A label is too long on line %d\n",
 	"Too many labels in a program. Happened on line %d:\n",
-	"An unknown label was encountered\n",
+	"An unknown label was encountered: line %d\n",
 	"Out of memory\n",
 	"Text module: %s\n",
 	"A label is set two times in the program (on lines %d and %d):\n",
@@ -74,6 +77,7 @@ const char *ASM_ERROR_MSG[] = {
 
 char *skip_space(char *str);
 size_t word_len(const char *str);
+void skip_after_char(char *str, char chr);
 
 struct AsmError assembler_ctor(struct Assembler *asmb, const char *filename);
 struct AsmError assemble_program(struct Assembler *asmb);
@@ -96,12 +100,14 @@ int main(int argc, const char *argv[])
 	struct Assembler asmb = {};
 	struct AsmError asm_err = create_error(ASM_NO_ERR, "");
 
-	if (argc < 2) {
-		log_message(ERROR, "Wrong arguments. Usage: assemble [input filename]");
+	struct Args args = {};
+	enum IO_error io_err = handle_arguments(argc, argv, &args);
+	if (io_err < 0) {
+		log_message(ERROR, cmd_err_to_str(io_err));
 		goto error;
 	}
 	
-	asm_err = assembler_ctor(&asmb, argv[1]);
+	asm_err = assembler_ctor(&asmb, args.input_filename);
 	if (asm_err.errcode < 0) {
 		log_asm_error(ERROR, asm_err, &asmb);
 		goto error;
@@ -118,6 +124,10 @@ int main(int argc, const char *argv[])
 		log_asm_error(ERROR, asm_err, &asmb);
 		goto error;
 	}
+
+	for (size_t i = 0; i < asmb.labels_num; i++)
+		log_message(DEBUG, "Label %s: %d (line %d)\n", asmb.labels[i].name,
+					asmb.labels[i].location, asmb.labels[i].line + 1);
 	
 	asm_err = write_bytecode(&asmb, "prog1.obj");
 	if (asm_err.errcode < 0) {
@@ -160,21 +170,25 @@ struct AsmError assemble_program(struct Assembler *asmb)
 	asmb->pc = 0;
 	struct AsmError asm_err = create_error(ASM_NO_ERR, "");
 	log_message(INFO, "ASSEMBLING START\n");
-	for (size_t i = 0; i < asmb->program_txt.num_lines; i++) {
-		char *token_start = skip_space(asmb->program_txt.lines[i].txt);
+	for (asmb->line = 0; asmb->line < asmb->program_txt.num_lines; asmb->line++) {
+		char *token_start = skip_space(asmb->program_txt.lines[asmb->line].txt);
+		skip_after_char(token_start, ';');
+		if (*token_start == '\0')
+			continue;
+		
 		asm_err = read_command(asmb, token_start);
 
 		if (asm_err.errcode < 0)
 			asm_err = read_label(asmb, token_start);
 
 		if (asm_err.errcode < 0) {
-			strcpy((char*) asm_err.context, (char*) &i);
 			return asm_err;
 		}
 	}
 
-	asmb->prog_size = asmb->pc;
+	asmb->cmd_num = asmb->pc;
 	asmb->pc = 0;
+	asmb->line = 0;
 	log_message(INFO, "ASSEMBLING END\n");
 	return create_error(ASM_NO_ERR, "");
 }
@@ -184,6 +198,13 @@ char *skip_space(char *str)
 	while (*str != '\0' && isspace(*str))
 		str++;
 	return str;
+}
+
+void skip_after_char(char *str, char chr)
+{
+	while (*str != '\0' && *str != chr)
+		str++;
+	*str = '\0';
 }
 
 size_t word_len(const char *str)
@@ -214,13 +235,16 @@ struct AsmError read_command(struct Assembler *asmb, char *cmd_start)
 			asm_err = read_arguments(asmb, arg_start, arg_types);			\
 			if (asm_err.errcode < 0) return asm_err;						\
 			log_string(INFO, ", arg: %d", asmb->program[asmb->pc + 1]);		\
-			(asmb->pc)++; /* two args but single ++	*/						\
+			asmb->pc += args_num + 1; /* two args but single ++	*/			\
+		} else {															\
+			(asmb->pc)++;													\
 		}																	\
-		(asmb->pc)++;														\
 		log_string(INFO, "\n");												\
-	}
+	}																		\
+	else																	\
 
 	#include "../common/codegen.h"
+	{ ; }
 
 #undef DEF_CMD
 
@@ -233,25 +257,28 @@ struct AsmError read_label(struct Assembler *asmb, char *label_start)
 {
 	size_t label_len = word_len(label_start);
 	if (label_len <= 0)
-		return create_error(ASM_NO_TOKEN_ERR, "");
+		return create_error(ASM_NO_TOKEN_ERR, &asmb->line);
 
 	if (label_start[label_len - 1] != ':')
-		return create_error(ASM_WRONG_TOKEN_ERR, "");
+		return create_error(ASM_WRONG_TOKEN_ERR, &asmb->line);
 
 	if (label_len >= LABEL_SIZE)
-		return create_error(ASM_LABEL_TOO_LONG, "");
+		return create_error(ASM_LABEL_TOO_LONG, &asmb->line);
 	
 	if (asmb->labels_num >= MAX_LABELS)
-		return create_error(ASM_TOO_MANY_LABELS, "");
+		return create_error(ASM_TOO_MANY_LABELS, &asmb->line);
 
 	for (size_t i = 0; i < asmb->labels_num; i++) {
 		size_t cmp_len = max(label_len - 1, strlen(asmb->labels[i].name));
-		if (strncmp(label_start, asmb->labels[i].name, cmp_len) == 0)
-			return create_error(ASM_DUPLICATE_LABEL_ERR, "");
+		if (strncmp(label_start, asmb->labels[i].name, cmp_len) == 0) {
+			struct AsmError err = create_error(ASM_DUPLICATE_LABEL_ERR, &asmb->labels[i].line);
+			return err;
+		}
 	}
 	
 	strncpy(asmb->labels[asmb->labels_num].name, label_start, label_len - 1);
 	asmb->labels[asmb->labels_num].location = asmb->pc;
+	asmb->labels[asmb->labels_num].line = asmb->line;
 	asmb->labels_num++;
 
 	return create_error(ASM_NO_ERR, "");
@@ -265,14 +292,14 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 
 	int read_success = 0;
 
-	if ((arg_types & IMMED) && !read_success) {
+	if ((arg_types & SIG_IMMED) && !read_success) {
 		int immed = 0;
 		read_success |= sscanf(arg_start, "%d", &immed);
 		if (read_success)
 			asmb->program[asmb->pc + 1] = immed;
 	}
 
-	if ((arg_types & NUM) && !read_success) {
+	if ((arg_types & SIG_NUM) && !read_success) {
 		double num = NAN;
 		read_success |= sscanf(arg_start, "%lf", &num);
 		if (read_success)
@@ -284,9 +311,10 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 		asmb->program[asmb->pc + 1] = REG_ ## name;				\
 		reg_len = strlen(#name);								\
 		read_success = 1;										\
-	}
+	}															\
+	else														\
 
-	if ((arg_types & RAM) && !read_success) {
+	if ((arg_types & SIG_RAM) && !read_success) {
 		if (arg_start[0] == '[') {
 			int address = 0;
 			int address_len = 0;
@@ -297,35 +325,37 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 				if (arg_start[0] != ']')
 					return create_error(ASM_WRONG_ARGS_ERR, "");
 				if (read_success) {
-					asmb->program[asmb->pc] |= RAM;
+					asmb->program[asmb->pc] |= SIG_RAM;
 					asmb->program[asmb->pc + 1] = address;
 				}
 			} else {
 				size_t reg_len = 0;
 				#include "../common/registers.h"
+				{ ; }
 
 				if (read_success) {
 					arg_start = skip_space(arg_start + reg_len);
 					if (arg_start[0] != ']')
 						return create_error(ASM_WRONG_ARGS_ERR, "");
-					asmb->program[asmb->pc] |= RAM | REG;
+					asmb->program[asmb->pc] |= SIG_RAM | SIG_REG;
 				}
 			}
 		}
 	}
 
-	// All if's are checked
-	if ((arg_types & REG) && !read_success) {
+	if ((arg_types & SIG_REG) && !read_success) {
 		size_t reg_len = 0;
 		#include "../common/registers.h"
+		{ ; }
+
 		if (read_success) {
-			asmb->program[asmb->pc] |= REG;
+			asmb->program[asmb->pc] |= SIG_REG;
 		}
 	}
 
 #undef DEF_REG
 
-	if ((arg_types & LABEL) && !read_success) {
+	if ((arg_types & SIG_LABEL) && !read_success) {
 		char label[LABEL_SIZE] = {};
 		read_success |= sscanf(arg_start, "%s", label);
 		if (read_success) {
@@ -336,6 +366,7 @@ struct AsmError read_arguments(struct Assembler *asmb, char *arg_start,
 			if (asmb->program[asmb->pc + 1] == -1) {
 				strcpy(asmb->fixups[asmb->fixups_num].name, label);
 				asmb->fixups[asmb->fixups_num].dest = asmb->pc + 1;
+				asmb->fixups[asmb->fixups_num].line = asmb->line;
 				asmb->fixups_num++;
 			}
 		}
@@ -369,7 +400,7 @@ struct AsmError write_bytecode(struct Assembler *asmb, const char *filename)
 	if (!output)
 		return create_error(ASM_FILE_WRITE_ERR, "");
 
-	fwrite(asmb->program, sizeof(int), asmb->prog_size, output);
+	fwrite(asmb->program, sizeof(int), asmb->cmd_num, output);
 
 	if (ferror(output))
 		return create_error(ASM_FILE_WRITE_ERR, "");
@@ -384,27 +415,37 @@ void log_asm_error(enum Log_level level, struct AsmError err,
 {
 	const char *err_txt = ASM_ERROR_MSG[-((int) err.errcode)];
 	struct Line line = {};
+	size_t line_idx = 0;
 	switch (err.errcode) {
 		case ASM_NO_TOKEN_ERR:
 		case ASM_WRONG_TOKEN_ERR:
 		case ASM_LABEL_TOO_LONG:
 		case ASM_UNKNOWN_LABEL_ERR:
 		case ASM_TOO_MANY_LABELS:
-			log_message(level, err_txt, *((size_t*) err.context));
-			line = asmb->program_txt.lines[*((size_t*) err.context)];
-			log_string(level, line.txt);
+			line_idx = *((size_t*) err.context);
+			log_message(level, err_txt, line_idx + 1);
+			line = asmb->program_txt.lines[line_idx];
+			log_string(level, skip_space(line.txt));
 			log_string(level, "\n");
 			for (size_t i = 0; i < line.len; i++)
 				log_string(level, "^");
 			break;
 		case ASM_TXT_ERR:
-			log_message(level, err_txt, (char*) err.context);
+			log_message(level, err_txt, err.context);
+			break;
+		case ASM_DUPLICATE_LABEL_ERR:
+			log_message(level, err_txt, *((size_t*) err.context) + 1,
+						asmb->line + 1);
+			line = asmb->program_txt.lines[*((size_t*) err.context)];
+			log_string(level, skip_space(line.txt));
+			log_string(level, "\n");
+			for (size_t i = 0; i < line.len; i++)
+				log_string(level, "^");
 			break;
 		case ASM_OUT_OF_MEMORY:
 		case ASM_FILE_WRITE_ERR:
 		case ASM_WRONG_ARGS_ERR:
 		case ASM_NO_ERR:
-		case ASM_DUPLICATE_LABEL_ERR:
 		default:
 			log_message(level, ASM_ERROR_MSG[-((int) err.errcode)]);
 			break;
@@ -415,6 +456,6 @@ struct AsmError create_error(enum AsmErrorCode code, const void *context)
 {
 	struct AsmError err = { ASM_NO_ERR, 0, "" };
 	err.errcode = code;
-	strncpy((char*) err.context, (const char*) context, ERR_CONTEXT_SIZE);
+	strncpy(err.context, (const char*) context, ERR_CONTEXT_SIZE);
 	return err;
 }
